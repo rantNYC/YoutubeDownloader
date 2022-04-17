@@ -1,4 +1,4 @@
-package com.example.demo.model;
+package com.example.model;
 
 public enum SearchType {
     PLAYLIST("list"),

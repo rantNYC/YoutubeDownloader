@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.controller;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -28,7 +28,9 @@ public class YoutubePlayListService {
     }
 
     @SneakyThrows
+    //TODO: Abstract to interface for api youtube
     public List<String> findVideosInPlayList(String playlistId) {
+        //TODO: Add exception handling
         List<String> videoIds = new ArrayList<>();
         YouTube.PlaylistItems.List playlistItemsListByPlaylistIdRequest = youtube.playlistItems()
                 .list(Collections.singletonList("snippet,contentDetails"));

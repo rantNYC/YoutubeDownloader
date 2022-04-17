@@ -1,9 +1,7 @@
-package com.example.demo.model;
+package com.example.model;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Data

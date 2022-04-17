@@ -33,7 +33,7 @@ img {
     margin: 10px;
 }
 
-.btn, .URL-input, .convert-button {
+.btn, .URL-input, .URL-invalid, .convert-button {
     border: none;
     outline: 0;
     display: inline-block;
@@ -44,11 +44,11 @@ img {
     font-size: 18px;
 }
 
-.URL-input {
-    width: 40%;
-    display: inline-block;
-    color: black;
+.URL-input, .URL-invalid{
+    width: 60%;
     cursor: text;
+    color: #735858;
+    border-radius: 0.3rem;
 }
 
 /* Style buttons */
@@ -112,3 +112,8 @@ h2 {
     width: 100%;
     z-index: 1;
 }
+
+.form-input{
+    display: block;
+}
+

@@ -1,8 +1,8 @@
-package com.example.demo.controller;
+package com.example.controller;
 
-import com.example.demo.model.LinkDto;
-import com.example.demo.model.YoutubeDataAssembler;
-import com.example.demo.model.YoutubeDataInfo;
+import com.example.model.LinkDto;
+import com.example.model.YoutubeDataAssembler;
+import com.example.model.YoutubeDataInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
@@ -22,39 +22,33 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @RestController
 @RequestMapping("/download")
+@CrossOrigin
 public class DownloaderController {
 
     private final YoutubeDownloaderService youtubeDownloaderService;
     private final YoutubeDataAssembler youtubeDataAssembler;
     private final PagedResourcesAssembler<YoutubeDataInfo> pagedResourcesAssembler;
-    private final Map<Integer, SseEmitter> sseEmitterMap;
-    private final AtomicInteger counter;
+    private final EmitterCacheService emitterCacheService;
 
     @Autowired
     public DownloaderController(YoutubeDownloaderService youtubeDownloaderService, YoutubeDataAssembler youtubeDataAssembler,
-                                PagedResourcesAssembler<YoutubeDataInfo> pagedResourcesAssembler) {
+                                PagedResourcesAssembler<YoutubeDataInfo> pagedResourcesAssembler, EmitterCacheService emitterCacheService) {
         this.youtubeDownloaderService = youtubeDownloaderService;
         this.youtubeDataAssembler = youtubeDataAssembler;
         this.pagedResourcesAssembler = pagedResourcesAssembler;
-        this.sseEmitterMap = new ConcurrentHashMap<>();
-        this.counter = new AtomicInteger();
+        this.emitterCacheService = emitterCacheService;
     }
 
     @PostMapping("/media")
     public ResponseEntity<CollectionModel<EntityModel<YoutubeDataInfo>>> downloadYtbVideo(@Valid @RequestBody LinkDto member,
                                                                                           @RequestHeader("GUID") int guid) throws IOException {
-        List<YoutubeDataInfo> fileMembers = youtubeDownloaderService.dispatchCall(member.getUrl(),
-                member.getSearch(), sseEmitterMap.get(guid), guid);
+        List<YoutubeDataInfo> fileMembers = youtubeDownloaderService.dispatchCall(member.getUrl(), member.getSearch(), guid);
         CollectionModel<EntityModel<YoutubeDataInfo>> model = youtubeDataAssembler.toCollectionModel(fileMembers);
-//        if(sseEmitterMap.get(guid) != null) sseEmitterMap.get(guid).complete();
         if (fileMembers.isEmpty()) return ResponseEntity.notFound().build();
         return ResponseEntity //
                 .created(model.getRequiredLink(IanaLinkRelations.SELF).toUri()) //
@@ -106,15 +100,10 @@ public class DownloaderController {
     }
 
     @GetMapping("/progress")
+    //TODO: Fix cancelation
     public SseEmitter eventEmitter() throws IOException {
-        SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
-        int guid = counter.incrementAndGet();
-        sseEmitter.send(SseEmitter.event().name("GUI_ID").data(guid));
-        sseEmitter.onCompletion(() -> log.info("Completed"));
-        sseEmitter.onTimeout(() -> sseEmitterMap.remove(guid));
-        sseEmitter.onError((ex) -> sseEmitterMap.remove(guid));
-        sseEmitterMap.put(guid, sseEmitter);
-
-        return sseEmitter;
+        int guid = emitterCacheService.addNewEmitter();
+        emitterCacheService.sendEvent(guid, "GUI_ID", guid);
+        return emitterCacheService.getCachedEmitter(guid);
     }
 }

@@ -1,9 +1,10 @@
-package com.example.demo.model;
+package com.example.model;
 
-import com.example.demo.controller.DownloaderController;
+import com.example.controller.DownloaderController;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.RepresentationModelAssembler;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ public class YoutubeDataAssembler implements RepresentationModelAssembler<Youtub
     @Override
     public EntityModel<YoutubeDataInfo> toModel(YoutubeDataInfo entity) {
         return EntityModel.of(entity,
-                linkTo(methodOn(DownloaderController.class).returnInfoMedia(entity.getId())).withSelfRel(),
+                WebMvcLinkBuilder.linkTo(methodOn(DownloaderController.class).returnInfoMedia(entity.getId())).withSelfRel(),
                 linkTo(methodOn(DownloaderController.class).retrieveAllMedia()).withRel("all"));
     }
 

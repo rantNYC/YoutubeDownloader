@@ -1,10 +1,9 @@
-package com.example.demo.controller;
+package com.example.controller;
 
-import com.example.demo.exception.MediaNotFoundException;
-import com.example.demo.exception.WrongUrlException;
-import com.example.demo.model.SearchType;
-import com.example.demo.model.YoutubeDataInfo;
-import com.example.demo.model.YoutubeDataRepository;
+import com.example.exception.MediaNotFoundException;
+import com.example.model.SearchType;
+import com.example.model.YoutubeDataInfo;
+import com.example.model.YoutubeDataRepository;
 import com.github.kiulian.downloader.YoutubeDownloader;
 import com.github.kiulian.downloader.downloader.request.RequestVideoFileDownload;
 import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
@@ -19,8 +18,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -28,7 +25,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -45,11 +44,13 @@ public class YoutubeDownloaderService {
     private final YoutubeDownloader ytDownloader;
     private final File outputPath;
     private final CompletionService<YoutubeDataInfo> completionService;
+    private final EmitterCacheService emitterCacheService;
 
     public YoutubeDownloaderService(@Value("${server.save.path}") String outputPath,
                                     @Value("${server.download.numRetries:3}") int maxRetries,
                                     YoutubeDataRepository youtubeDataRepository,
-                                    YoutubePlayListService youtubePlayListService) {
+                                    YoutubePlayListService youtubePlayListService,
+                                    EmitterCacheService emitterCacheService) {
         this.outputPath = new File(outputPath);
         this.youtubeDataRepository = youtubeDataRepository;
         this.youtubePlayListService = youtubePlayListService;
@@ -60,6 +61,7 @@ public class YoutubeDownloaderService {
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         completionService = new ExecutorCompletionService<>(executorService);
         ytDownloader.getConfig().setExecutorService(executorService);
+        this.emitterCacheService = emitterCacheService;
     }
 
 
@@ -72,16 +74,11 @@ public class YoutubeDownloaderService {
         return youtubeDataRepository.findAll(pages);
     }
 
-    public List<YoutubeDataInfo> dispatchCall(String urlId, SearchType searchType, SseEmitter emitter, int guid) {
+    public List<YoutubeDataInfo> dispatchCall(String urlId, SearchType searchType, int guid) throws IOException {
         List<YoutubeDataInfo> members = new ArrayList<>();
         List<VideoInfo> videoInfos = scanForVideos(urlId, searchType);
         //TODO: Refactor and more elegant way to do this, KISS
-        if(emitter == null) return members;
-        try {
-            emitter.send(SseEmitter.event().name(guid+"-total").data(videoInfos.size()));
-        } catch (IOException e) {
-//            emitter.completeWithError(e);
-        }
+        emitterCacheService.sendEvent(guid, guid + "-total", videoInfos.size());
 
         videoInfos.forEach(info -> completionService.submit(() -> downloadFile(info)));
         int fileProcessed = 1;
@@ -89,11 +86,10 @@ public class YoutubeDownloaderService {
             try {
                 Future<YoutubeDataInfo> f = completionService.take();
                 YoutubeDataInfo fileMember = f.get();
-                if (fileMember != null){
+                if (fileMember != null) {
                     members.add(fileMember);
-                    emitter.send(SseEmitter.event().name(guid+"-progress").id(fileMember.getId().toString()).data(fileProcessed++));
-                }
-                else {
+                    emitterCacheService.sendEvent(guid, guid + "-progress", fileMember.getId().toString(), fileProcessed++);
+                } else {
                     log.warn("File member returned empty for {}", info.details().videoId());
                 }
             } catch (Exception e) {
@@ -127,6 +123,7 @@ public class YoutubeDownloaderService {
     }
 
     public byte[] saveSongsIntoZip(List<String> ids) {
+        //TODO: Abstract to interface
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
              ZipOutputStream zipOutputStream = new ZipOutputStream(byteArrayOutputStream)) {
 
@@ -155,38 +152,16 @@ public class YoutubeDownloaderService {
         return new byte[0];
     }
 
+    //TODO: Abstract to interface for Ytb library
     private List<VideoInfo> scanForVideos(String urlId, SearchType searchType) {
         List<VideoInfo> videoInfos = new ArrayList<>();
 
-        if (!StringUtils.hasLength(urlId))
-            throw new WrongUrlException("Url id is empty");
-
-        if ((!urlId.contains("youtube") && !urlId.contains("youtu.be")) &&
-                (!urlId.contains("watch?") && !urlId.contains("list"))) {
-            throw new WrongUrlException("Url is malformed: " + urlId);
-        }
-
-        //https://www.youtube.com/watch?v=cds_rfHsJ3Y&list=RDCLAK5uy_k5n4srrEB1wgvIjPNTXS9G1ufE9WQxhnA&index=7
-        int pos = urlId.indexOf("?");
-        String slice = urlId.substring(pos + 1);
-        String[] limits = slice.split("&");
-        Map<String, String> contentByParam = new HashMap<>();
-        for (String limit : limits) {
-            String[] delim = limit.split("=");
-            if (delim.length != 2) {
-                log.warn("delimiter {} doesn't have length 2", limit);
-                continue;
-            }
-            contentByParam.put(delim[0], delim[1]);
-        }
-
-        if (SearchType.PLAYLIST.equals(searchType) && contentByParam.containsKey(searchType.getShortName())) {
-            log.info("Currently downloading list: {}", contentByParam.get(searchType.getShortName()));
-            List<String> playList = youtubePlayListService.findVideosInPlayList(contentByParam.get("list"));
+        if (SearchType.PLAYLIST.equals(searchType)) {
+            log.info("Currently downloading list: {}", urlId);
+            List<String> playList = youtubePlayListService.findVideosInPlayList(urlId);
             playList.forEach(videoId -> addVideoInfoToList(videoInfos, videoId));
-        } else if (SearchType.VIDEO.equals(searchType) && contentByParam.containsKey(searchType.getShortName())) {
-            String videoId = contentByParam.get(searchType.getShortName());
-            addVideoInfoToList(videoInfos, videoId);
+        } else if (SearchType.VIDEO.equals(searchType)) {
+            addVideoInfoToList(videoInfos, urlId);
         }
 
         return videoInfos;
@@ -203,6 +178,7 @@ public class YoutubeDownloaderService {
         }
     }
 
+    //TODO: Abstract to interface for Ytb library
     private YoutubeDataInfo downloadFile(VideoInfo info) {
 
         File dataFile = null;

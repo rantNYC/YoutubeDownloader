@@ -1,7 +1,9 @@
 import './progressCircle.css';
+import React from "react";
 
 interface ProgressCircleProps {
-    percentage: number,
+    progress: number,
+    total: number,
 }
 
 interface CSSPros {
@@ -9,7 +11,7 @@ interface CSSPros {
     percentage?: number
 }
 
-const ProgressCircle = ({percentage}: ProgressCircleProps) => {
+const ProgressCircle = ({progress, total}: ProgressCircleProps) => {
 
     const Circle = ({color, percentage}: CSSPros) => {
         if (!percentage) percentage = 0;
@@ -31,7 +33,7 @@ const ProgressCircle = ({percentage}: ProgressCircleProps) => {
         );
     };
 
-    const Text = ({color}: CSSPros) => {
+    const Text = ({color, percentage}: CSSPros) => {
         return (
             <text
                 x="50%"
@@ -41,10 +43,19 @@ const ProgressCircle = ({percentage}: ProgressCircleProps) => {
                 fill={color}
                 fontSize={"1.5em"}
             >
-                {percentage.toFixed(0)}%
+                {percentage ? percentage.toFixed(0) : 0}%
             </text>
         );
     };
+
+    const calculatePercentage = () => {
+        const percentage = total !== 0 ? ((100 * progress) / total).toFixed() : 0;
+        const isNegativeOrNaN = !Number.isFinite(+percentage) || percentage < 0; // we can set non-numbers to 0 here
+        const isTooHigh = percentage > 100;
+        return isNegativeOrNaN ? 0 : isTooHigh ? 100 : +percentage;
+    };
+
+    const percentage = calculatePercentage();
 
     return (
         <div className="progress-container">
@@ -53,8 +64,9 @@ const ProgressCircle = ({percentage}: ProgressCircleProps) => {
                     <Circle color={"rgba(255,255,255,0.93)"} percentage={0}/>
                     <Circle color={"#00ff43"} percentage={percentage}/>
                 </g>
-                <Text color={"#fff"}/>
+                <Text color={"#fff"} percentage={percentage}/>
             </svg>
+            <p className="progress-text">{`${progress} out of  ${total} processed`}</p>
         </div>
     );
 }
