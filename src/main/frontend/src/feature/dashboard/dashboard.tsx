@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from "react";
-import LoadingSpinner from "../../component/spinner/spinner";
+import LoadingSpinner from "../../component/loaders/spinner";
 import axios from "axios";
 import {FETCH_PAGE_DATA, MEDIA_FILE_FROM_SERVER, STREAM_FILE_FROM_SERVER, ZIP_ALL_FILES} from "../../utils/Routes";
 import FileSaver from "file-saver";
@@ -124,6 +124,17 @@ const Dashboard = () => {
         dispatch(remove(id));
     }
 
+    const updateFile = (id: number, title: string | null) => {
+        if (!title) return;
+        console.log("New Title", title);
+
+        // axios.put(MEDIA_FILE_FROM_SERVER(id), {
+        //     newTitle: id,
+        // }).catch((response) => {
+        //     console.error("Could not download from backend.", response);
+        // })
+    }
+
     const modifyCurrentPageSize = (newSize: number) => {
         sendRequest(FETCH_PAGE_DATA(0, newSize));
     }
@@ -132,7 +143,7 @@ const Dashboard = () => {
         return (
             <div className='dashboard-table'>
                 <PaginationTable data={data._embedded.youtubeDataInfoList} downloadFile={downloadFile}
-                                 deleteFile={deleteFile}/>
+                                 deleteFile={deleteFile} updateTitle={updateFile}/>
                 {!pageInfo ?
                     <></> :
                     <PaginationFooter

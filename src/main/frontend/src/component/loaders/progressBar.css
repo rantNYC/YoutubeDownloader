@@ -1,0 +1,25 @@
+.progress {
+    background: rgba(255,255,255,0.1);
+    display: inline;
+    justify-content: flex-start;
+    text-align: left;
+    border-radius: 0.5rem;
+    position: absolute;
+    height: 0.5rem;
+    right: 40vw;
+    width: 20vw;
+    min-width: 10%;
+    z-index: 1;
+}
+
+.progress-value {
+    box-shadow: 0 10px 40px -10px #fff;
+    border-radius: 0.5rem;
+    background: #0e5905;
+    height: 0.5rem;
+    width: 0;
+}
+
+.progress-text{
+    color: white;
+}

@@ -6,8 +6,8 @@ import {SearchTypes} from "../../model/SearchTypes";
 import {useNavigate} from "react-router-dom";
 import {useAppDispatch} from "../store/hooks";
 import {populate} from "../store/media/mediaReducer";
-import ProgressCircle from "../../component/spinner/progressCircle";
 import {sliceYoutubeString} from "../../utils/StringUtils";
+import ProgressCircle from "../../component/loaders/progressCircle";
 
 const Input = () => {
 
@@ -45,8 +45,7 @@ const Input = () => {
                 }
             });
             es.addEventListener(`${guid}-total`, (em) => {
-                const total = em.data;
-                setTotal(total);
+                setTotal(em.data);
             });
 
             postRequestDownload(urlId, guid).then(res => {
@@ -72,7 +71,6 @@ const Input = () => {
             }
             es.close();
         };
-
         es.onopen = () => {
             console.log("connection opened", es.readyState === EventSource.OPEN);
         };
@@ -128,14 +126,13 @@ const Input = () => {
 
     const sendDownloadRequest = () => {
         const urlId = processYoutubeLink(youtubeLink, searchType);
-        console.log(urlId);
-        if (!urlId) return;
+        console.log('UrlId: ' + urlId);
 
         connectEventSource(urlId);
     }
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        if (!error) {   // ADDED
+        if (!error) {
             if (e.target.validity.patternMismatch) {
                 if (ref.current !== null) ref.current.focus();
                 setError(true);

@@ -48,8 +48,8 @@ export interface LinksCommon {
 
 export const emptyHRef: HRef = {href: ''};
 export const emptyPageLinks: PageLinks = {first: emptyHRef, last: emptyHRef, self: emptyHRef};
-export const emptyPageInfo: PageInfo = {number: 0, size: 0, totalElements: 0, totalPages: 0}
-export const emptyLinks: ReferenceLinks = {self: emptyHRef}
+export const emptyPageInfo: PageInfo = {number: 0, size: 0, totalElements: 0, totalPages: 0};
+export const emptyLinks: ReferenceLinks = {self: emptyHRef};
 export const emptyIDonwload: IDownload = {
     _links: emptyLinks,
     ext: "",
@@ -60,6 +60,6 @@ export const emptyIDonwload: IDownload = {
     title: "",
     urlId: "",
     video: false
-}
-export const emptyEmbedded: Embedded = {youtubeDataInfoList: []}
-export const emptyCollectionDownload: CollectionDownload = {_embedded: emptyEmbedded, _links: emptyLinks}
+};
+export const emptyEmbedded: Embedded = {youtubeDataInfoList: []};
+export const emptyCollectionDownload: CollectionDownload = {_embedded: emptyEmbedded, _links: emptyLinks};

@@ -82,6 +82,13 @@ public class DownloaderController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping(value = "/media/{id}")
+    public ResponseEntity<EntityModel<?>> updateTitleMedia(@PathVariable("id") Long id,
+                                                           @Valid @RequestBody String newTitle) {
+        youtubeDownloaderService.updateMediaById(id, newTitle);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping(value = "/media/stream/{id}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<FileSystemResource> returnStreamMedia(@PathVariable("id") Long id,
                                                                 HttpServletResponse response) {
@@ -103,6 +110,7 @@ public class DownloaderController {
     //TODO: Fix cancelation
     public SseEmitter eventEmitter() throws IOException {
         int guid = emitterCacheService.addNewEmitter();
+        log.info("New GUID sent: {}", guid);
         emitterCacheService.sendEvent(guid, "GUI_ID", guid);
         return emitterCacheService.getCachedEmitter(guid);
     }

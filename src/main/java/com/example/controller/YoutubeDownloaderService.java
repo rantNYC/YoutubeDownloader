@@ -1,16 +1,11 @@
 package com.example.controller;
 
+import com.example.controller.connection.YoutubeExternalService;
 import com.example.exception.MediaNotFoundException;
 import com.example.model.SearchType;
 import com.example.model.YoutubeDataInfo;
 import com.example.model.YoutubeDataRepository;
-import com.github.kiulian.downloader.YoutubeDownloader;
-import com.github.kiulian.downloader.downloader.request.RequestVideoFileDownload;
-import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
-import com.github.kiulian.downloader.downloader.response.Response;
-import com.github.kiulian.downloader.model.videos.VideoDetails;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
-import com.github.kiulian.downloader.model.videos.formats.AudioFormat;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -20,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,31 +31,21 @@ import java.util.zip.ZipOutputStream;
 @Slf4j
 public class YoutubeDownloaderService {
 
-    private final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
-
     private final YoutubeDataRepository youtubeDataRepository;
-    private final YoutubePlayListService youtubePlayListService;
-    private final YoutubeDownloader ytDownloader;
-    private final File outputPath;
-    private final CompletionService<YoutubeDataInfo> completionService;
+    private final YoutubeExternalService youtubeExternalService;
     private final EmitterCacheService emitterCacheService;
+    private final CompletionService<YoutubeDataInfo> completionService;
 
-    public YoutubeDownloaderService(@Value("${server.save.path}") String outputPath,
-                                    @Value("${server.download.numRetries:3}") int maxRetries,
-                                    YoutubeDataRepository youtubeDataRepository,
-                                    YoutubePlayListService youtubePlayListService,
-                                    EmitterCacheService emitterCacheService) {
-        this.outputPath = new File(outputPath);
+
+    public YoutubeDownloaderService(YoutubeDataRepository youtubeDataRepository,
+                                    YoutubeExternalService youtubeExternalService,
+                                    EmitterCacheService emitterCacheService,
+                                    @Value("${server.download.numRetries:10}") int numOfThreads) {
         this.youtubeDataRepository = youtubeDataRepository;
-        this.youtubePlayListService = youtubePlayListService;
-        if (!this.outputPath.isDirectory())
-            throw new IllegalArgumentException("Output path has to be a directory " + outputPath);
-        ytDownloader = new YoutubeDownloader();
-        ytDownloader.getConfig().setMaxRetries(maxRetries);
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        completionService = new ExecutorCompletionService<>(executorService);
-        ytDownloader.getConfig().setExecutorService(executorService);
+        this.youtubeExternalService = youtubeExternalService;
         this.emitterCacheService = emitterCacheService;
+        ExecutorService executorService = Executors.newFixedThreadPool(numOfThreads);
+        completionService = new ExecutorCompletionService<>(executorService);
     }
 
 
@@ -76,11 +60,9 @@ public class YoutubeDownloaderService {
 
     public List<YoutubeDataInfo> dispatchCall(String urlId, SearchType searchType, int guid) throws IOException {
         List<YoutubeDataInfo> members = new ArrayList<>();
-        List<VideoInfo> videoInfos = scanForVideos(urlId, searchType);
-        //TODO: Refactor and more elegant way to do this, KISS
+        List<VideoInfo> videoInfos = youtubeExternalService.scanForVideos(urlId, searchType);
         emitterCacheService.sendEvent(guid, guid + "-total", videoInfos.size());
-
-        videoInfos.forEach(info -> completionService.submit(() -> downloadFile(info)));
+        videoInfos.forEach(info -> completionService.submit(() -> startDownloadFlow(info)));
         int fileProcessed = 1;
         for (VideoInfo info : videoInfos) {
             try {
@@ -88,6 +70,7 @@ public class YoutubeDownloaderService {
                 YoutubeDataInfo fileMember = f.get();
                 if (fileMember != null) {
                     members.add(fileMember);
+                    youtubeDataRepository.save(fileMember);
                     emitterCacheService.sendEvent(guid, guid + "-progress", fileMember.getId().toString(), fileProcessed++);
                 } else {
                     log.warn("File member returned empty for {}", info.details().videoId());
@@ -152,68 +135,16 @@ public class YoutubeDownloaderService {
         return new byte[0];
     }
 
-    //TODO: Abstract to interface for Ytb library
-    private List<VideoInfo> scanForVideos(String urlId, SearchType searchType) {
-        List<VideoInfo> videoInfos = new ArrayList<>();
-
-        if (SearchType.PLAYLIST.equals(searchType)) {
-            log.info("Currently downloading list: {}", urlId);
-            List<String> playList = youtubePlayListService.findVideosInPlayList(urlId);
-            playList.forEach(videoId -> addVideoInfoToList(videoInfos, videoId));
-        } else if (SearchType.VIDEO.equals(searchType)) {
-            addVideoInfoToList(videoInfos, urlId);
-        }
-
-        return videoInfos;
+    public void updateMediaById(Long id, String title) {
+        youtubeDataRepository.setTitleById(title, id);
     }
 
-    private void addVideoInfoToList(List<VideoInfo> videoInfos, String videoId) {
-        RequestVideoInfo requestVideoInfo = new RequestVideoInfo(videoId);
-        Response<VideoInfo> infoResponse = ytDownloader.getVideoInfo(requestVideoInfo);
-        VideoInfo data = infoResponse.data();
-        if (data != null) {
-            videoInfos.add(infoResponse.data());
-        } else {
-            log.warn("No videos found for video {}", videoId);
-        }
-    }
-
-    //TODO: Abstract to interface for Ytb library
-    private YoutubeDataInfo downloadFile(VideoInfo info) {
-
-        File dataFile = null;
-        YoutubeDataInfo youtubeData = null;
-        try {
-            VideoDetails details = info.details();
-            AudioFormat audioFormat = info.bestAudioFormat();
-            Optional<YoutubeDataInfo> file = youtubeDataRepository.findByTitle(details.title());
-            if (file.isPresent()) {
-                return file.get();
-            }
-
-            log.info("Downloading file {}", details.title());
-            RequestVideoFileDownload requestVideoFileDownload = new RequestVideoFileDownload(audioFormat)
-                    .saveTo(outputPath)
-                    .renameTo(details.title())
-                    .overwriteIfExists(true).callback(new YoutubeDownloaderCallback(details.title()));
-            Response<File> fileResponse = ytDownloader.downloadVideoFile(requestVideoFileDownload);
-            dataFile = fileResponse.data();
-            youtubeData = YoutubeDataInfo.builder()
-                    .title(details.title())
-                    .urlId(YOUTUBE_URL + details.videoId())
-                    .path(dataFile.toString())
-                    .ext(audioFormat.extension().value())
-                    .size(dataFile.length())
-                    .lengthSeconds(details.lengthSeconds())
-                    .isVideo(false)
-                    .build();
-            youtubeDataRepository.save(youtubeData);
-            log.info("Saved {} to file {}", youtubeData, dataFile);
-        } catch (Exception ex) {
-            log.error("Error while fetching song", ex);
-            if (dataFile != null && dataFile.exists()) dataFile.delete();
+    private YoutubeDataInfo startDownloadFlow(VideoInfo info){
+        Optional<YoutubeDataInfo> file = youtubeDataRepository.findByTitle(info.details().title());
+        if (file.isPresent()) {
+            return file.get();
         }
 
-        return youtubeData;
+        return youtubeExternalService.downloadFile(info);
     }
 }
