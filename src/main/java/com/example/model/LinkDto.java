@@ -8,8 +8,9 @@ import java.util.List;
 public class LinkDto {
 
     private String url;
-
+    private String genre;
     private SearchType search;
+
 
     private List<String> ids;
     private List<String> titles;

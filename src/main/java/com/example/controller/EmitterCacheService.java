@@ -23,7 +23,10 @@ public class EmitterCacheService {
     public int addNewEmitter() {
         SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
         int guid = counter.incrementAndGet();
-        sseEmitter.onCompletion(() -> log.info("Emiter {} was Completed", guid));
+        sseEmitter.onCompletion(() -> {
+            log.info("Emiter {} was Completed", guid);
+            sseEmitterMap.remove(guid);
+        });
         sseEmitter.onTimeout(() -> sseEmitterMap.remove(guid));
         sseEmitter.onError((ex) -> sseEmitterMap.remove(guid));
         sseEmitterMap.put(guid, sseEmitter);

@@ -1,14 +1,21 @@
 import React, {useCallback, useEffect, useState} from "react";
 import LoadingSpinner from "../../component/loaders/spinner";
 import axios from "axios";
-import {FETCH_PAGE_DATA, MEDIA_FILE_FROM_SERVER, STREAM_FILE_FROM_SERVER, ZIP_ALL_FILES} from "../../utils/Routes";
+import {
+    FETCH_PAGE_DATA,
+    MEDIA_FILE_FROM_SERVER,
+    STREAM_FILE_FROM_SERVER,
+    UPDATE_MEDIA_TITLE,
+    ZIP_ALL_FILES
+} from "../../utils/Routes";
 import FileSaver from "file-saver";
-import {CollectionDownload, emptyCollectionDownload, PageInfo, PageLinks} from "../../model/IDownload";
+import {CollectionDownload, emptyCollectionDownload, IDownload, PageInfo, PageLinks} from "../../model/IDownload";
 import PaginationTable from "../../component/pagination/PaginationTable";
 import './dashboard.css'
 import {useAppDispatch, useAppSelector} from "../store/hooks";
-import {populate, remove, selectMedia} from "../store/media/mediaReducer";
+import {populate, remove, selectMedia, update} from "../store/media/mediaReducer";
 import PaginationFooter from "../../component/pagination/PaginationFooter";
+import {addGenre} from "../store/media/genreReducer";
 
 const Dashboard = () => {
 
@@ -17,15 +24,22 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(data.page?.number ?? 0);
     const [currentSize, setcurrentSize] = useState(data.page?.size ?? 10);
+    const [editing, setEditing] = useState(false);
 
     const sendRequest = useCallback((url: string) => {
         axios.get(url)
             .then(res => {
-                dispatch(populate(res.data));
+                if (res.data._embedded) {
+                    dispatch(populate(res.data));
+                }
                 return res.data;
             }).then((data: CollectionDownload) => {
-            setCurrentPage(data.page?.number ?? 0);
-            setcurrentSize(data.page?.size ?? 10);
+            if (!data._embedded) {
+                sendRequest((data._links as PageLinks).last.href);
+            } else {
+                setCurrentPage(data.page?.number ?? 0);
+                setcurrentSize(data.page?.size ?? 10);
+            }
         }).catch(err =>
             console.error("Error", err)
         );
@@ -118,36 +132,38 @@ const Dashboard = () => {
 
     const deleteFile = (id: number) => {
         axios.delete(MEDIA_FILE_FROM_SERVER(id))
+            .then(() => dispatch(remove(id)))
             .catch((response) => {
                 console.error("Could not download from backend.", response);
             })
-        dispatch(remove(id));
-    }
-
-    const updateFile = (id: number, title: string | null) => {
-        if (!title) return;
-        console.log("New Title", title);
-
-        // axios.put(MEDIA_FILE_FROM_SERVER(id), {
-        //     newTitle: id,
-        // }).catch((response) => {
-        //     console.error("Could not download from backend.", response);
-        // })
     }
 
     const modifyCurrentPageSize = (newSize: number) => {
-        sendRequest(FETCH_PAGE_DATA(0, newSize));
+        sendRequest(FETCH_PAGE_DATA(currentPage, newSize));
+    }
+
+    const updateForm = (dataInfo: IDownload, newTitle: string, newGenre: string) => {
+        if (!dataInfo.id) return;
+        axios.put(UPDATE_MEDIA_TITLE(dataInfo.id), {
+            title: newTitle,
+            genre: newGenre,
+        }).then(() => {
+            dispatch(update(Object.assign({}, dataInfo, {title: newTitle, genre: newGenre})))
+            dispatch(addGenre(newGenre));
+        }).catch(err => console.error("Error", err)
+        ).finally(() => setEditing(false));
     }
 
     const loadTable = () => {
         return (
             <div className='dashboard-table'>
                 <PaginationTable data={data._embedded.youtubeDataInfoList} downloadFile={downloadFile}
-                                 deleteFile={deleteFile} updateTitle={updateFile}/>
+                                 deleteFile={deleteFile} editing={editing} setEditing={setEditing}
+                                 updateForm={updateForm} />
                 {!pageInfo ?
                     <></> :
                     <PaginationFooter
-                        currentPage={currentPage as number}
+                        currentPage={currentPage}
                         totalPages={pageInfo.totalPages}
                         changeSize={modifyCurrentPageSize}
                         goToFirst={goToFirst}
@@ -155,7 +171,9 @@ const Dashboard = () => {
                         goToPage={goToPage}
                         goToNext={goToNext}
                         goToPrev={goToPrev}/>}
-            </div>
+                {/*{playId !== 0 ? <H5AudioPlayer ={STREAM_FILE_FROM_SERVER(playId)}*/}
+
+                    </div>
         )
     }
 

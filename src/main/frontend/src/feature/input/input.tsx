@@ -4,16 +4,18 @@ import "./input.css";
 import {FETCH_PAGE_DATA, handleError, MEDIA_URL, PROGRESS_URL} from "../../utils/Routes";
 import {SearchTypes} from "../../model/SearchTypes";
 import {useNavigate} from "react-router-dom";
-import {useAppDispatch} from "../store/hooks";
+import {useAppDispatch, useAppSelector} from "../store/hooks";
 import {populate} from "../store/media/mediaReducer";
 import {sliceYoutubeString} from "../../utils/StringUtils";
 import ProgressCircle from "../../component/loaders/progressCircle";
+import {selectGenres} from "../store/media/genreReducer";
 
 const Input = () => {
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const ref = useRef<HTMLInputElement>(null);
+    const genres = useAppSelector(selectGenres);
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(false);    // ADDED
@@ -21,11 +23,13 @@ const Input = () => {
     const [searchType, setSearchType] = useState<SearchTypes>(SearchTypes.PLAYLIST);
     const [progress, setProgress] = useState(0);
     const [total, setTotal] = useState(0);
+    const [genre, setGenre] = useState('');
 
     const postRequestDownload = (urlId: string, guid: string) => {
         return axios.post(MEDIA_URL, {
             url: urlId,
-            search: searchType
+            search: searchType,
+            genre: genre,
         }, {
             headers: {
                 guid: guid
@@ -142,9 +146,10 @@ const Input = () => {
 
     return (
         <div className="Dashboard">
-            <div className="card">
+            <div className="selection">
                 <img className="circle" src="profile.png" alt="John"/>
                 <button onClick={fetchMediaData}>View All Media</button>
+                <button onClick={() => navigate('/genres')}>View Categories</button>
             </div>
             <form onSubmit={downloadFileServer} className="form-search">
                 <div className="radio-input">
@@ -155,6 +160,20 @@ const Input = () => {
                                        checked={searchType === SearchTypes.VIDEO}
                                        type="radio" value="Video"
                                        name="type"/></label>
+                </div>
+                <div className="genre-input">
+                    <label>Update Category</label>
+                    <input type="text" onInput={e => setGenre(e.currentTarget.value)}
+                           list="genres" name="genre"/>
+                    <datalist id="genres">
+                        {
+                            genres.map((val,index) => {
+                                return (
+                                    <option key={index} value={val}/>
+                                )
+                            })
+                        }
+                    </datalist>
                 </div>
                 <div>
                     <input className={error ? 'URL-invalid' : 'URL-input'} onChange={handleChange}

@@ -10,12 +10,38 @@
     border-radius: 1rem 1rem 0 0;
     font-weight: normal;
     border-collapse: collapse;
-    width: 95%;
+    width: fit-content;
     max-width: 100%;
     max-height: 80vh;
     white-space: nowrap;
     overflow-y: auto;
     overflow-x: auto;
+}
+
+/* width */
+::-webkit-scrollbar {
+    width: 1rem;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 1rem;
+}
+
+::-webkit-scrollbar-corner{
+    display: none;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 1rem;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 .fl-table td, .fl-table th {
@@ -31,6 +57,10 @@
     color: #ECB365;
     background: #324960;
     font-size: 1.5rem;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    /*z-index: 1; // any positive value, layer order is global*/
 }
 
 .fl-table thead th:nth-child(odd) {

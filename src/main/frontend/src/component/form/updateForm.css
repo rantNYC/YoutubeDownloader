@@ -1,0 +1,60 @@
+.form-popup {
+    padding: 20px;
+    background: #fff;
+    border-radius: 5px;
+    position: absolute;
+    left: 15%;
+    bottom: 50%;
+    width: 70%;
+    z-index: 1;
+    transition: all 1s ease-in-out;
+}
+
+.form-container{
+    text-align: left;
+}
+
+.form-container input[type=text], .form-container input[type=password] {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.1rem 0 0.5rem 0;
+    border-radius: 0.3rem;
+}
+
+.form-container label {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.form-container .btn-container {
+    text-align: center;
+}
+
+.form-container .btn {
+    background-color: #04AA6D;
+    color: #000000;
+    cursor: pointer;
+    justify-content: center;
+    width: fit-content;
+    margin-bottom:10px;
+    opacity: 0.8;
+}
+
+/* Add a red background color to the cancel button */
+.form-container .cancel {
+    background-color: red;
+}
+
+/* Add some hover effects to buttons */
+.form-container .btn:hover, .open-button:hover {
+    opacity: 1;
+}
+
+.form-popup .close {
+    background: red;
+    font-weight: bold;
+}
+
+.form-popup .close:hover {
+    color: #d80606;
+}

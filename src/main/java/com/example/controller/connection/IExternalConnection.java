@@ -1,7 +1,7 @@
 package com.example.controller.connection;
 
 import com.example.model.SearchType;
-import com.example.model.YoutubeDataInfo;
+import com.example.model.jpa.YoutubeDataInfo;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
 
 import java.io.IOException;

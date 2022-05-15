@@ -1,13 +1,16 @@
-export const BASE_URL = "/api"
-export const DOWNLOAD_URL = BASE_URL + "/download"
-export const PROGRESS_URL = DOWNLOAD_URL + "/progress"
-export const MEDIA_URL = DOWNLOAD_URL + "/media"
+export const BASE_URL = "/api";
+export const DOWNLOAD_URL = BASE_URL + "/download";
+export const PROGRESS_URL = DOWNLOAD_URL + "/progress";
+export const MEDIA_URL = DOWNLOAD_URL + "/media";
+export const GENRES_URL = DOWNLOAD_URL + "/media/genres";
 export const FETCH_ALL_FILES = DOWNLOAD_URL + "/data/all"
 export const FETCH_FILE_USER = DOWNLOAD_URL + "/get/user";
 export const ZIP_ALL_FILES = DOWNLOAD_URL + "/file/zip";
 export const STREAM_FILE_FROM_SERVER = (id: number) => MEDIA_URL + `/stream/${id}`;
 export const MEDIA_FILE_FROM_SERVER = (id: number) => MEDIA_URL + `/${id}`;
 export const FETCH_PAGE_DATA = (page: number, size: number) => `${MEDIA_URL}?page=${page}&size=${size}`
+export const UPDATE_MEDIA_TITLE = (id: number) => `${MEDIA_FILE_FROM_SERVER(id)}`
+export const FETCH_MEDIA_BY_GENRE = (genre: string) => GENRES_URL + `/${genre}`
 
 export const handleError = (error: any) => {
     if (error.response) {

@@ -1,8 +1,10 @@
 import {configureStore} from "@reduxjs/toolkit";
 import mediaReducer from "./media/mediaReducer";
+import genreReducer from "./media/genreReducer";
 
 export const store = configureStore({
     reducer: {
+        genre: genreReducer,
         media: mediaReducer,
     }
 });

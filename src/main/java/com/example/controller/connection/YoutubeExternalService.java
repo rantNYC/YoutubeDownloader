@@ -2,7 +2,7 @@ package com.example.controller.connection;
 
 import com.example.controller.YoutubeDownloaderCallback;
 import com.example.model.SearchType;
-import com.example.model.YoutubeDataInfo;
+import com.example.model.jpa.YoutubeDataInfo;
 import com.github.kiulian.downloader.YoutubeDownloader;
 import com.github.kiulian.downloader.downloader.request.RequestVideoFileDownload;
 import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
@@ -94,7 +94,7 @@ public class YoutubeExternalService implements IExternalConnection<VideoInfo> {
                     .build();
             log.info("Saved {} to file {}", youtubeData, dataFile);
         } catch (Exception ex) {
-            log.error("Error while fetching song", ex);
+            log.error("Error while fetching song: " + info.details().title(), ex);
             if (dataFile != null && dataFile.exists()) dataFile.delete();
         }
 
@@ -117,7 +117,7 @@ public class YoutubeExternalService implements IExternalConnection<VideoInfo> {
         List<String> videoIds = new ArrayList<>();
         YouTube.PlaylistItems.List playlistItemsListByPlaylistIdRequest = youtube.playlistItems()
                 .list(Collections.singletonList("snippet,contentDetails"));
-        playlistItemsListByPlaylistIdRequest.setMaxResults((long) 25);
+        playlistItemsListByPlaylistIdRequest.setMaxResults((long) 50);
         playlistItemsListByPlaylistIdRequest.setKey("AIzaSyBR-pEDtDhux9lnyfBzH44ZzS6yCGevQzc");
         playlistItemsListByPlaylistIdRequest.setPlaylistId(playlistId);
 

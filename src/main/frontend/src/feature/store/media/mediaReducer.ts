@@ -1,5 +1,5 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import {CollectionDownload, emptyCollectionDownload} from "../../../model/IDownload";
+import {CollectionDownload, emptyCollectionDownload, IDownload} from "../../../model/IDownload";
 import {RootState} from "../store";
 
 export const mediaSlicer = createSlice({
@@ -13,10 +13,13 @@ export const mediaSlicer = createSlice({
         },
         remove(state, action: PayloadAction<number>) {
             state._embedded.youtubeDataInfoList = state._embedded.youtubeDataInfoList.filter(item => item.id !== action.payload)
-        }
+        },
+        update(state, action: PayloadAction<IDownload>) {
+            state._embedded.youtubeDataInfoList = state._embedded.youtubeDataInfoList.map(el => (el.id === action.payload.id ? action.payload : el))
+        },
     }
 })
 
-export const {populate, remove} = mediaSlicer.actions;
+export const {populate, remove, update} = mediaSlicer.actions;
 export const selectMedia = (state: RootState) => state.media;
 export default mediaSlicer.reducer;

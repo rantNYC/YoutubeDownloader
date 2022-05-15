@@ -12,10 +12,10 @@ export interface IDownload {
     id: number;
     title: string;
     urlId: string;
+    genre: string;
     ext: string;
     size: number;
     lengthSeconds: number;
-    fileWithExtension: string;
     video: boolean;
     _links: ReferenceLinks;
 }
@@ -52,8 +52,8 @@ export const emptyPageInfo: PageInfo = {number: 0, size: 0, totalElements: 0, to
 export const emptyLinks: ReferenceLinks = {self: emptyHRef};
 export const emptyIDonwload: IDownload = {
     _links: emptyLinks,
+    genre: "",
     ext: "",
-    fileWithExtension: "",
     id: 0,
     lengthSeconds: 0,
     size: 0,

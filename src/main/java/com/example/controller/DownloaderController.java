@@ -1,9 +1,10 @@
 package com.example.controller;
 
-import com.example.model.LinkDto;
-import com.example.model.YoutubeDataAssembler;
-import com.example.model.YoutubeDataInfo;
+import com.example.model.*;
+import com.example.model.jpa.MusicGenre;
+import com.example.model.jpa.YoutubeDataInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,9 @@ import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Slf4j
 @RestController
@@ -47,7 +51,7 @@ public class DownloaderController {
     @PostMapping("/media")
     public ResponseEntity<CollectionModel<EntityModel<YoutubeDataInfo>>> downloadYtbVideo(@Valid @RequestBody LinkDto member,
                                                                                           @RequestHeader("GUID") int guid) throws IOException {
-        List<YoutubeDataInfo> fileMembers = youtubeDownloaderService.dispatchCall(member.getUrl(), member.getSearch(), guid);
+        List<YoutubeDataInfo> fileMembers = youtubeDownloaderService.dispatchCall(member.getUrl(), member.getSearch(), member.getGenre(), guid);
         CollectionModel<EntityModel<YoutubeDataInfo>> model = youtubeDataAssembler.toCollectionModel(fileMembers);
         if (fileMembers.isEmpty()) return ResponseEntity.notFound().build();
         return ResponseEntity //
@@ -56,16 +60,29 @@ public class DownloaderController {
     }
 
     @GetMapping("/media")
-    public ResponseEntity<PagedModel<EntityModel<YoutubeDataInfo>>> retrievePageVideos(@RequestParam Optional<Integer> page, @RequestParam Optional<Integer> size) {
-        Page<YoutubeDataInfo> data = youtubeDownloaderService.retrieveAll(page.orElse(0), size.orElse(50));
-        PagedModel<EntityModel<YoutubeDataInfo>> collModel = pagedResourcesAssembler
-                .toModel(data, youtubeDataAssembler);
+    public ResponseEntity<CollectionModel<EntityModel<YoutubeDataInfo>>> retrievePageVideos(@RequestParam Optional<Integer> page, @RequestParam Optional<Integer> size) {
+        Page<YoutubeDataInfo> data = youtubeDownloaderService.retrieveAllMedia(page.orElse(0), size.orElse(50));
+        PagedModel<EntityModel<YoutubeDataInfo>> collModel = pagedResourcesAssembler.toModel(data, youtubeDataAssembler);
         return ResponseEntity.ok(collModel);
+    }
+
+    @GetMapping("/media/genres")
+    public ResponseEntity<CollectionModel<MusicGenre>> retrieveMusicGenres() {
+        return ResponseEntity.ok(
+                CollectionModel.of(youtubeDownloaderService.retrieveAllGenres(),
+                        linkTo(methodOn(DownloaderController.class).retrieveMusicGenres())
+                                .withSelfRel()));
+    }
+
+    @GetMapping("/media/genres/{genre}")
+    public ResponseEntity<CollectionModel<EntityModel<YoutubeDataInfo>>> retrieveAllMediaByGenre(@PathVariable("genre") String genre) {
+        return ResponseEntity.ok(
+                youtubeDataAssembler.toCollectionModel(youtubeDownloaderService.retrieveMediaByGenre(genre)));
     }
 
     @GetMapping("/media/all")
     public ResponseEntity<CollectionModel<EntityModel<YoutubeDataInfo>>> retrieveAllMedia() {
-        List<YoutubeDataInfo> data = youtubeDownloaderService.retrieveAll();
+        List<YoutubeDataInfo> data = youtubeDownloaderService.retrieveAllMedia();
         return ResponseEntity.ok(youtubeDataAssembler.toCollectionModel(data));
 
     }
@@ -84,8 +101,8 @@ public class DownloaderController {
 
     @PutMapping(value = "/media/{id}")
     public ResponseEntity<EntityModel<?>> updateTitleMedia(@PathVariable("id") Long id,
-                                                           @Valid @RequestBody String newTitle) {
-        youtubeDownloaderService.updateMediaById(id, newTitle);
+                                                           @Valid @RequestBody @NotNull DataModification newData) {
+        youtubeDownloaderService.updateMediaById(id, newData);
         return ResponseEntity.noContent().build();
     }
 
@@ -107,7 +124,7 @@ public class DownloaderController {
     }
 
     @GetMapping("/progress")
-    //TODO: Fix cancelation
+    //TODO: Fix cancellation
     public SseEmitter eventEmitter() throws IOException {
         int guid = emitterCacheService.addNewEmitter();
         log.info("New GUID sent: {}", guid);
