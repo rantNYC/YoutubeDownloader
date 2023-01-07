@@ -1,4 +1,4 @@
-package com.example.controller;
+package com.example.controller.downloader;
 
 import com.example.controller.connection.YoutubeExternalService;
 import com.example.exception.GenreNotFoundException;
@@ -111,7 +111,7 @@ public class YoutubeDownloaderService {
 
         if (videoInfos.size() == 0)
             log.warn("No videos found for: {}", urlId);
-
+        emitterCacheService.complete(guid);
         return members;
     }
 

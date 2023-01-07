@@ -1,6 +1,6 @@
 package com.example.model;
 
-import com.example.controller.DownloaderController;
+import com.example.controller.downloader.DownloaderController;
 import com.example.model.jpa.YoutubeDataInfo;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;

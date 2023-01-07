@@ -1,4 +1,4 @@
-package com.example.controller;
+package com.example.controller.downloader;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,15 @@ public class EmitterCacheService {
             log.info("Emiter {} was Completed", guid);
             sseEmitterMap.remove(guid);
         });
-        sseEmitter.onTimeout(() -> sseEmitterMap.remove(guid));
-        sseEmitter.onError((ex) -> sseEmitterMap.remove(guid));
+        sseEmitter.onTimeout(() -> {
+            sseEmitter.complete();
+            sseEmitterMap.remove(guid);
+        });
+        sseEmitter.onError((ex) -> {
+            sseEmitter.completeWithError(ex);
+            sseEmitterMap.remove(guid);
+        });
+
         sseEmitterMap.put(guid, sseEmitter);
         return guid;
     }
@@ -45,6 +52,17 @@ public class EmitterCacheService {
         SseEmitter sseEmitter = sseEmitterMap.get(guid);
         if(sseEmitter != null) {
             sseEmitter.send(SseEmitter.event().name(name).id(id).data(data));
+        } else {
+            log.warn("SSE Emitter not found for guid {}", guid);
+        }
+    }
+
+    public void complete(int guid) throws IOException {
+        SseEmitter sseEmitter = sseEmitterMap.get(guid);
+        if(sseEmitter != null) {
+            sseEmitter.complete();
+        } else {
+            log.warn("SSE Emitter not found for guid {}", guid);
         }
     }
 }

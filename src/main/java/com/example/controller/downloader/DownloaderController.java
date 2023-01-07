@@ -1,4 +1,4 @@
-package com.example.controller;
+package com.example.controller.downloader;
 
 import com.example.model.*;
 import com.example.model.jpa.MusicGenre;
@@ -13,6 +13,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -125,10 +126,12 @@ public class DownloaderController {
 
     @GetMapping("/progress")
     //TODO: Fix cancellation
-    public SseEmitter eventEmitter() throws IOException {
+    public ResponseEntity<SseEmitter> eventEmitter() throws IOException {
         int guid = emitterCacheService.addNewEmitter();
         log.info("New GUID sent: {}", guid);
         emitterCacheService.sendEvent(guid, "GUI_ID", guid);
-        return emitterCacheService.getCachedEmitter(guid);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache().noTransform())
+                .body(emitterCacheService.getCachedEmitter(guid));
     }
 }

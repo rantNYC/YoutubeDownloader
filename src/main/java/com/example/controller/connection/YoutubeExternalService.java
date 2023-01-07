@@ -1,6 +1,6 @@
 package com.example.controller.connection;
 
-import com.example.controller.YoutubeDownloaderCallback;
+import com.example.controller.downloader.YoutubeDownloaderCallback;
 import com.example.model.SearchType;
 import com.example.model.jpa.YoutubeDataInfo;
 import com.github.kiulian.downloader.YoutubeDownloader;
@@ -108,7 +108,7 @@ public class YoutubeExternalService implements IExternalConnection<VideoInfo> {
         if (data != null) {
             videoInfos.add(infoResponse.data());
         } else {
-            log.warn("No videos found for video {}", videoId);
+            log.warn("No video found for {}", videoId);
         }
     }
 

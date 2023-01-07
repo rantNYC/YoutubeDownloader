@@ -1,4 +1,4 @@
-package com.example.controller;
+package com.example.controller.downloader;
 
 import com.github.kiulian.downloader.downloader.YoutubeProgressCallback;
 import lombok.extern.slf4j.Slf4j;
